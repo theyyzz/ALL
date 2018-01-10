@@ -85,4 +85,9 @@ class AllController extends Controller
     {
         //
     }
+
+    public function chat()
+    {
+        return view('all/chat');
+    }
 }

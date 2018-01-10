@@ -15,6 +15,7 @@ Route::get('/redis', 'Redis\RedisController@index')->name('redis');
 
 Route::group(['namespace' => 'All'], function(){
     Route::get('/', 'AllController@index')->name('index');
+    Route::get('/chat', 'AllController@chat')->name('chat');
 });
 
 Auth::routes();

@@ -63,7 +63,7 @@ class socket extends Command
      * */
     public function start()
     {
-        $this->server=new Web_Socket_Handler("",9527);
+        $this->server=new Web_Socket_Handler("127.0.0.1",9527);
         $this->info('Started');
     }
     public function stop()
