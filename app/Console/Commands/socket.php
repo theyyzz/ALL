@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Handler\Web_Socket_Handler;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Redis;
 
 class socket extends Command
 {
@@ -63,7 +64,16 @@ class socket extends Command
      * */
     public function start()
     {
-        $this->server=new Web_Socket_Handler("127.0.0.1",9527);
+        Redis::select(3);
+        $socket_id=Redis::get('socket_id');
+        if (empty($socket_id)){
+            $this->server=new Web_Socket_Handler("0.0.0.0",9527);
+            $this->server->run();
+        }else{
+            $this->error('socket still running');
+        }
+
+
         $this->info('Started');
     }
     public function stop()

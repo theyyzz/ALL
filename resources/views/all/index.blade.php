@@ -19,7 +19,7 @@
 </div>
 @endsection
 
-@include('layouts.end')
+
 
 
 
