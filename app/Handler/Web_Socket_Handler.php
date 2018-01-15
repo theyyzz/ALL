@@ -59,8 +59,14 @@ class Web_Socket_Handler {
                         }
                         else{
                             $buffer = $this->decode($buffer);
-                            echo $buffer;
-                            $this->send($socket, $buffer);
+                             $data=json_decode($buffer);
+                             echo $data->name.":".$data->content."\n";
+                            foreach ($this->user as $item){
+                                if ($socket!=$item['socket']){
+                                    $this->send($item['socket'], $buffer);
+                                }
+                            }
+
                         }
                     }
                 }
