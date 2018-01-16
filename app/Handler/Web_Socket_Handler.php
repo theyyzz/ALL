@@ -37,27 +37,31 @@ class Web_Socket_Handler {
             $socketArr = $this->sockets;
             $write = NULL;
             $except = NULL;
-            socket_select($socketArr, $write, $except, NULL);  //自动选择来消息的socket 如果是握手 自动选择主机
+            socket_select($socketArr, $write, $except, NULL); //自动选择来消息的socket
             foreach ($socketArr as $socket){
                 if ($socket == $this->master){  //主机
                     $client = socket_accept($this->master);
                     if ($client < 0){
-                        $this->log("socket_accept() failed");
                         continue;
                     } else{
-                        $this->Connect($client);
+                        $this->Connect($client);//建立连接
                     }
                 } else {
                     $bytes = @socket_recv($socket,$buffer,2048,0);
+
                     if ($bytes == 0){
-                        $this->disConnect($socket);
-                    }
-                    else{
+                        $this->disConnect($socket);//断开连接（超时自动断开）
+
+                    } else{
+
                         $key= $this->search($socket);
+
                         if (!$this->user[$key]['handshake']){
-                            $this->doHandShake($socket, $buffer,$key);
-                        }
-                        else{
+
+                            $this->doHandShake($socket, $buffer,$key);//握手
+
+                        } else{
+                            //是否发送消息、心跳包、以及推送、以及各个路由分类
                             $buffer = $this->decode($buffer);
                              $data=json_decode($buffer);
                              echo $data->name.":".$data->content."\n";
@@ -66,13 +70,11 @@ class Web_Socket_Handler {
                                     $this->send($item['socket'], $buffer);
                                 }
                             }
-
                         }
                     }
                 }
             }
         }
-
     }
     //发送消息
     function send($client, $msg){
@@ -171,7 +173,7 @@ class Web_Socket_Handler {
         return false;
     }
 
-    function say($msg = ""){
+   /* function say($msg = ""){
         echo $msg . "\n";
     }
 
@@ -179,5 +181,5 @@ class Web_Socket_Handler {
         if ($this->debug){
             echo $msg . "\n";
         }
-    }
+    }*/
 }
