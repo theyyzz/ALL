@@ -19,7 +19,8 @@ class Web_Socket_Handler {
      * @param int $port
      * @return void No value is returned.
      */
-    public function __construct(string $address,int $port){
+    public function __construct(string $address,int $port)
+    {
 
         $this->master=socket_create(AF_INET, SOCK_STREAM, SOL_TCP)or die("socket_create() failed");
 
@@ -55,8 +56,8 @@ class Web_Socket_Handler {
                 }else{
                     $bytes = @socket_recv($socket,$buffer,2048,0);
                     if ($bytes == 0){
-                        $this->close($socket);//断开连接（超时自动断开）
                         $fd= $this->search($socket);
+                        $this->close($fd);//断开连接（超时自动断开）
                         $func($array=array('close'=>$fd));
                     } else{
                         $fd=$this->handshake($socket,$buffer);
@@ -75,7 +76,8 @@ class Web_Socket_Handler {
      * @param resource $socket
      * @return array $fp
      */
-    public function connect(resource $socket){
+    public function connect($socket): array
+    {
         array_push($this->sockets, $socket);
         $fd=uniqid();
         $this->fd[$fd]=[
@@ -92,7 +94,7 @@ class Web_Socket_Handler {
      * @param string $buffer
      * @return bool $fd
      * */
-    private function handshake(resource $socket,string $buffer)
+    private function handshake($socket,string $buffer)
     {
         $fd= $this->search($socket);
         if ($this->fd[$fd]['handshake']===false){
@@ -114,7 +116,7 @@ class Web_Socket_Handler {
      * @param string $buffer
      * @return array $array
      */
-    public function message(string $fd,string $buffer)
+    public function message(string $fd,string $buffer):array
     {
         //是否有心跳检测
         $buffer = $this->decode($buffer);
@@ -141,7 +143,7 @@ class Web_Socket_Handler {
      */
     public function close(string $fd)
     {
-        socket_close( $this->sockets['$fd']['socket']);
+        socket_close($this->fd[$fd]['socket']);
         unset($this->fd[$fd]);
         $this->sockets=array($this->master);
         foreach($this->fd as $v){
@@ -163,7 +165,8 @@ class Web_Socket_Handler {
      * @param string $buffer
      * @return string $decoded
      */
-    private function decode(string $buffer) {
+    private function decode(string $buffer): string
+    {
         $len = $masks = $data = $decoded = null;
         $len = ord($buffer[1]) & 127;
 
@@ -190,7 +193,7 @@ class Web_Socket_Handler {
      * @param string $message
      * @return string $ns
      */
-    private function frame(string $message)
+    private function frame(string $message): int
     {
         $a = str_split($message, 125);
         if (count($a) == 1) {
@@ -208,7 +211,8 @@ class Web_Socket_Handler {
      * @param string $req
      * @return array
      */
-    private function header(string $req){
+    private function header(string $req): array
+    {
         $r = $h = $o = $key = null;
         if (preg_match("/GET (.*) HTTP/"              ,$req,$match)) { $r = $match[1]; }
         if (preg_match("/Host: (.*)\r\n/"             ,$req,$match)) { $h = $match[1]; }
@@ -222,7 +226,8 @@ class Web_Socket_Handler {
      * @param string $key
      * @return  string $accept
      */
-    private function calcKey(string $key){
+    private function calcKey(string $key): string
+    {
         //基于websocket version 13
         $accept = base64_encode(sha1($key . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
         return $accept;
@@ -245,9 +250,10 @@ class Web_Socket_Handler {
     /**
      * 根据sock在users里面查找相应的$k
      * @param resource $socket
-     * @return bool or string
+     * @return string or string
      * */
-    private function search(resource $socket){
+    private function search($socket): string
+    {
         foreach ($this->fd as $k=>$v){
             if($socket==$v['socket'])
                 return $k;
