@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Handler\Chat_Realization_Handler;
 use App\Handler\Web_Socket_Handler;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
@@ -67,8 +68,13 @@ class socket extends Command
         Redis::select(3);
         $socket_id=Redis::get('socket_id');
         if (empty($socket_id)){
-            $this->server=new Web_Socket_Handler("0.0.0.0",9527);
-            $this->server->run();
+            $this->server=new Chat_Realization_Handler("0.0.0.0",9527);
+            $this->server->on('open',function ($data){
+                var_dump($data);
+            });
+            $this->server->on('message',function ($data){
+                var_dump($data);
+            });
         }else{
             $this->error('socket still running');
         }

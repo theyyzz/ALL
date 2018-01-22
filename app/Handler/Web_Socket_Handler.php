@@ -8,14 +8,18 @@
 
 namespace App\Handler;
 
-use Illuminate\Support\Facades\Redis;
 class Web_Socket_Handler {
-    public $master;
-    public $sockets = array();
-    public $debug = false;
-    public $user=array();
+    private $master;
+    private $sockets = array();
+    private $fd=array();
 
-    function __construct($address, $port){
+    /**
+     * construct
+     * @param string $address
+     * @param int $port
+     * @return void No value is returned.
+     */
+    public function __construct($address, $port){
 
         $this->master=socket_create(AF_INET, SOCK_STREAM, SOL_TCP)or die("socket_create() failed");
 
@@ -26,110 +30,141 @@ class Web_Socket_Handler {
         socket_listen($this->master,20)or die("socket_listen() failed");
 
         $this->sockets[] = $this->master;
-        $this->say("Server Started : ".date('Y-m-d H:i:s'));
-        $this->say("Listening on   : ".$address." port ".$port);
-        $this->say("Master socket  : ".$this->master."\n");
+        $this->log("Server Started : ".date('Y-m-d H:i:s'));
+        $this->log("Listening on   : ".$address." port ".$port);
+        $this->log("Master socket  : ".$this->master);
     }
 
-    public function run()
+    /**
+     * web_socket start
+     * @param  callable $func
+     */
+    public function run(callable $func)
     {
         while(true){
             $socketArr = $this->sockets;
-            $write = NULL;
-            $except = NULL;
-            socket_select($socketArr, $write, $except, NULL); //自动选择来消息的socket
+            $write =$except= NULL;
+            socket_select($socketArr, $write, $except, NULL);
             foreach ($socketArr as $socket){
-                if ($socket == $this->master){  //主机
+                if ($socket == $this->master){
                     $client = socket_accept($this->master);
-                    if ($client < 0){
-                        continue;
-                    } else{
-                        $this->Connect($client);//建立连接
+                    if ($client > 0){
+                        $array=$this->connect($client);//建立连接，阻塞没有处理
+                        $func($array);
                     }
-                } else {
+                }else{
                     $bytes = @socket_recv($socket,$buffer,2048,0);
-
                     if ($bytes == 0){
-                        $this->disConnect($socket);//断开连接（超时自动断开）
-
+                        $this->close($socket);//断开连接（超时自动断开）
                     } else{
-
-                        $key= $this->search($socket);
-
-                        if (!$this->user[$key]['handshake']){
-
-                            $this->doHandShake($socket, $buffer,$key);//握手
-
-                        } else{
-                            //是否发送消息、心跳包、以及推送、以及各个路由分类
-                            $buffer = $this->decode($buffer);
-                             $data=json_decode($buffer);
-                             echo $data->name.":".$data->content."\n";
-                            foreach ($this->user as $item){
-                                if ($socket!=$item['socket']){
-                                    $this->send($item['socket'], $buffer);
-                                }
-                            }
+                        $fd=$this->handshake($socket,$buffer);
+                        if (!empty($fd)){
+                            $array=$this->message($fd,$buffer);
+                            $func($array);
                         }
+
                     }
                 }
             }
         }
     }
-    //发送消息
-    function send($client, $msg){
-        $msg = $this->frame($msg);
-        socket_write($client, $msg, strlen($msg));
-    }
-    //建立连接
-    function connect($socket){
+
+    /**
+     * connect
+     * @param resource $socket
+     * @return array $fp
+     */
+    public function connect($socket){
         array_push($this->sockets, $socket);
-        $key=uniqid();
-        $this->user[$key]=[
+        $fd=uniqid();
+        $this->fd[$fd]=[
             'socket'=>$socket,
             'handshake'=>false
         ];
-    }
-    //关闭连接
-    function disConnect($socket){
-        socket_close($socket);
-        $user_key=$this->search($socket);
-        unset($this->user[$user_key]);
-        $this->sockets=array($this->master);
-        foreach($this->user as $v){
-            $this->sockets[]=$v['socket'];
-        }
-        $this->say($socket . " DISCONNECTED!");
-    }
-    //握手头信息
-    function doHandShake($socket, $buffer,$userkey){
-        list($resource, $host, $origin, $key) = $this->getHeaders($buffer);
-        $upgrade  = "HTTP/1.1 101 Switching Protocol\r\n" .
-            "Upgrade: websocket\r\n" .
-            "Connection: Upgrade\r\n" .
-            "Sec-WebSocket-Accept: " . $this->calcKey($key) . "\r\n\r\n";  //必须以两个回车结尾
-        socket_write($socket, $upgrade, strlen($upgrade));
-        $this->user[$userkey]['handshake']=true;
-        return true;
+        $array=array('open'=>$fd);
+        return $array;
     }
 
-    //
-    function getHeaders($req){
-        $r = $h = $o = $key = null;
-        if (preg_match("/GET (.*) HTTP/"              ,$req,$match)) { $r = $match[1]; }
-        if (preg_match("/Host: (.*)\r\n/"             ,$req,$match)) { $h = $match[1]; }
-        if (preg_match("/Origin: (.*)\r\n/"           ,$req,$match)) { $o = $match[1]; }
-        if (preg_match("/Sec-WebSocket-Key: (.*)\r\n/",$req,$match)) { $key = $match[1]; }
-        return array($r, $h, $o, $key);
+    /**
+     * handshake
+     * @param resource $socket
+     * @param string $buffer
+     * @return bool $fd
+     * */
+    private function handshake($socket, $buffer)
+    {
+        $fd= $this->search($socket);
+        if ($this->fd[$fd]['handshake']===false){
+            list($resource, $host, $origin, $key) = $this->header($buffer);
+            $upgrade  = "HTTP/1.1 101 Switching Protocol\r\n" .
+                "Upgrade: websocket\r\n" .
+                "Connection: Upgrade\r\n" .
+                "Sec-WebSocket-Accept: " . $this->calcKey($key) . "\r\n\r\n";
+            socket_write($socket, $upgrade, strlen($upgrade));
+            $this->fd[$fd]['handshake']=true;
+        }else{
+            return $fd;
+        }
+
     }
-    //加密key
-    function calcKey($key){
-        //基于websocket version 13
-        $accept = base64_encode(sha1($key . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
-        return $accept;
+
+    /**
+     * message
+     * @param string $fd
+     * @param string $buffer
+     * @return array $array
+     */
+
+    public function message($fd,$buffer)
+    {
+        //是否有心跳检测
+        $buffer = $this->decode($buffer);
+        $array=array('message'=>['fd'=>$fd,'data'=>$buffer]);
+        return $array;
     }
-    //解码
-    function decode($buffer) {
+
+    /**
+     * push
+     * @param resource $fd
+     * @param string $message
+     * @return void No value is returned.
+     */
+    public function push($fd, $message)
+    {
+        $msg = $this->frame($message);
+        socket_write($this->fd[$fd]['socket'], $message, strlen($msg));
+    }
+
+    /**
+     * close
+     * @param resource $fd
+     * @return void No value is returned.
+     */
+    public function close($fd)
+    {
+        socket_close( $this->sockets['$fd']['socket']);
+        unset($this->fd[$fd]);
+        $this->sockets=array($this->master);
+        foreach($this->fd as $v){
+            $this->sockets[]=$v['socket'];
+        }
+    }
+
+    /*
+     *  心跳检测
+     * 
+     * */
+    public function pong()
+    {
+
+    }
+
+    /**
+     * 解码
+     * @param string $buffer
+     * @return string $decoded
+     */
+    private function decode($buffer) {
         $len = $masks = $data = $decoded = null;
         $len = ord($buffer[1]) & 127;
 
@@ -150,10 +185,15 @@ class Web_Socket_Handler {
         }
         return $decoded;
     }
-    //返回数据格式
-    function frame($s)
+
+    /**
+     * 发送数据格式处理
+     * @param string $message
+     * @return string $ns
+     */
+    private function frame($message)
     {
-        $a = str_split($s, 125);
+        $a = str_split($message, 125);
         if (count($a) == 1) {
             return "\x81" . chr(strlen($a[0])) . $a[0];
         }
@@ -164,22 +204,56 @@ class Web_Socket_Handler {
         return $ns;
     }
 
-    //根据sock在users里面查找相应的$k
-    function search($sock){
-        foreach ($this->user as $k=>$v){
-            if($sock==$v['socket'])
+    /**
+     * 握手头信息
+     * @param string $req
+     * @return array
+     */
+    private function header($req){
+        $r = $h = $o = $key = null;
+        if (preg_match("/GET (.*) HTTP/"              ,$req,$match)) { $r = $match[1]; }
+        if (preg_match("/Host: (.*)\r\n/"             ,$req,$match)) { $h = $match[1]; }
+        if (preg_match("/Origin: (.*)\r\n/"           ,$req,$match)) { $o = $match[1]; }
+        if (preg_match("/Sec-WebSocket-Key: (.*)\r\n/",$req,$match)) { $key = $match[1]; }
+        return array($r, $h, $o, $key);
+    }
+
+    /**
+     * 加密Key
+     * @param string $key
+     * @return  string $accept
+     */
+    private function calcKey($key){
+        //基于websocket version 13
+        $accept = base64_encode(sha1($key . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
+        return $accept;
+    }
+
+    /**
+     * log
+     * @param string $addr
+     * @param string $content
+     * @return void No value is returned.
+     * */
+    private function log($content,$addr='websocket_log.txt')
+    {
+        echo $content;
+        $log=fopen($addr,'a');
+        fwrite($log,$content."\n");
+        fclose($log);
+    }
+
+    /**
+     * 根据sock在users里面查找相应的$k
+     * @param resource $socket
+     * @return bool or string
+     * */
+    private function search($socket){
+        foreach ($this->fd as $k=>$v){
+            if($socket==$v['socket'])
                 return $k;
         }
         return false;
     }
 
-   /* function say($msg = ""){
-        echo $msg . "\n";
-    }
-
-    function log($msg = ""){
-        if ($this->debug){
-            echo $msg . "\n";
-        }
-    }*/
 }
