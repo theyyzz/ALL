@@ -75,6 +75,9 @@ class socket extends Command
             $this->server->on('message',function ($data){
                 var_dump($data);
             });
+            $this->server->on('close',function ($data){
+                var_dump($data);
+            });
         }else{
             $this->error('socket still running');
         }

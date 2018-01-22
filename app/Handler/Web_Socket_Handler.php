@@ -19,7 +19,7 @@ class Web_Socket_Handler {
      * @param int $port
      * @return void No value is returned.
      */
-    public function __construct($address, $port){
+    public function __construct(string $address,int $port){
 
         $this->master=socket_create(AF_INET, SOCK_STREAM, SOL_TCP)or die("socket_create() failed");
 
@@ -56,13 +56,14 @@ class Web_Socket_Handler {
                     $bytes = @socket_recv($socket,$buffer,2048,0);
                     if ($bytes == 0){
                         $this->close($socket);//断开连接（超时自动断开）
+                        $fd= $this->search($socket);
+                        $func($array=array('close'=>$fd));
                     } else{
                         $fd=$this->handshake($socket,$buffer);
                         if (!empty($fd)){
                             $array=$this->message($fd,$buffer);
                             $func($array);
                         }
-
                     }
                 }
             }
@@ -74,7 +75,7 @@ class Web_Socket_Handler {
      * @param resource $socket
      * @return array $fp
      */
-    public function connect($socket){
+    public function connect(resource $socket){
         array_push($this->sockets, $socket);
         $fd=uniqid();
         $this->fd[$fd]=[
@@ -91,7 +92,7 @@ class Web_Socket_Handler {
      * @param string $buffer
      * @return bool $fd
      * */
-    private function handshake($socket, $buffer)
+    private function handshake(resource $socket,string $buffer)
     {
         $fd= $this->search($socket);
         if ($this->fd[$fd]['handshake']===false){
@@ -105,7 +106,6 @@ class Web_Socket_Handler {
         }else{
             return $fd;
         }
-
     }
 
     /**
@@ -114,8 +114,7 @@ class Web_Socket_Handler {
      * @param string $buffer
      * @return array $array
      */
-
-    public function message($fd,$buffer)
+    public function message(string $fd,string $buffer)
     {
         //是否有心跳检测
         $buffer = $this->decode($buffer);
@@ -125,11 +124,11 @@ class Web_Socket_Handler {
 
     /**
      * push
-     * @param resource $fd
+     * @param string $fd
      * @param string $message
      * @return void No value is returned.
      */
-    public function push($fd, $message)
+    public function push(string $fd,string $message)
     {
         $msg = $this->frame($message);
         socket_write($this->fd[$fd]['socket'], $message, strlen($msg));
@@ -137,10 +136,10 @@ class Web_Socket_Handler {
 
     /**
      * close
-     * @param resource $fd
+     * @param string $fd
      * @return void No value is returned.
      */
-    public function close($fd)
+    public function close(string $fd)
     {
         socket_close( $this->sockets['$fd']['socket']);
         unset($this->fd[$fd]);
@@ -160,11 +159,11 @@ class Web_Socket_Handler {
     }
 
     /**
-     * 解码
+     * decode
      * @param string $buffer
      * @return string $decoded
      */
-    private function decode($buffer) {
+    private function decode(string $buffer) {
         $len = $masks = $data = $decoded = null;
         $len = ord($buffer[1]) & 127;
 
@@ -191,7 +190,7 @@ class Web_Socket_Handler {
      * @param string $message
      * @return string $ns
      */
-    private function frame($message)
+    private function frame(string $message)
     {
         $a = str_split($message, 125);
         if (count($a) == 1) {
@@ -209,7 +208,7 @@ class Web_Socket_Handler {
      * @param string $req
      * @return array
      */
-    private function header($req){
+    private function header(string $req){
         $r = $h = $o = $key = null;
         if (preg_match("/GET (.*) HTTP/"              ,$req,$match)) { $r = $match[1]; }
         if (preg_match("/Host: (.*)\r\n/"             ,$req,$match)) { $h = $match[1]; }
@@ -223,7 +222,7 @@ class Web_Socket_Handler {
      * @param string $key
      * @return  string $accept
      */
-    private function calcKey($key){
+    private function calcKey(string $key){
         //基于websocket version 13
         $accept = base64_encode(sha1($key . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
         return $accept;
@@ -231,13 +230,13 @@ class Web_Socket_Handler {
 
     /**
      * log
-     * @param string $addr
      * @param string $content
+     * @param string $addr
      * @return void No value is returned.
      * */
-    private function log($content,$addr='websocket_log.txt')
+    private function log(string $content,string $addr='websocket_log.txt')
     {
-        echo $content;
+        echo $content."\n";
         $log=fopen($addr,'a');
         fwrite($log,$content."\n");
         fclose($log);
@@ -248,7 +247,7 @@ class Web_Socket_Handler {
      * @param resource $socket
      * @return bool or string
      * */
-    private function search($socket){
+    private function search(resource $socket){
         foreach ($this->fd as $k=>$v){
             if($socket==$v['socket'])
                 return $k;

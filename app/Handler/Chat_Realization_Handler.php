@@ -19,7 +19,7 @@ class Chat_Realization_Handler
      * @param int $port
      * @return void No value is returned.
      */
-    public function __construct($address, $port)
+    public function __construct(string $address,int $port)
     {
         $this->server=new Web_Socket_Handler($address, $port);
 
@@ -27,33 +27,34 @@ class Chat_Realization_Handler
 
     /**
      * push
-     * @param resource $fd
+     * @param string $fd
      * @param string $message
      * @return void No value is returned.
      */
-    public function push($fd, $message)
+    public function push(string $fd,string $message)
     {
         $this->server->push($fd, $message);
-
     }
 
     /**
      * close
-     * @param resource $fd
+     * @param string $fd
      * @return void No value is returned.
      */
-    public function close($fd)
+    public function close(string $fd)
     {
-        $this->server->close($fd);
+       $this->server->close($fd);
     }
 
     public function on(string $type,callable $func)
     {
-        $this->server->run(function ($data)use ($type,$func){
+        $this->server->run(function ($data)use ($func){
             if (array_keys($data)[0]=='open'){
                 $func($data['open']);
             }elseif (array_keys($data)[0]=='message'){
                 $func($data['message']);
+            }elseif (array_keys($data)[0]=='close'){
+                $func($data['close']);
             }
         });
     }
