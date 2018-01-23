@@ -161,7 +161,7 @@ class Web_Socket_Handler {
     }
 
     /**
-     * decode
+     * decode1
      * @param string $buffer
      * @return string $decoded
      */
