@@ -16,7 +16,7 @@ class Chat_Realization_Handler
     /**
      * construct
      * @param string $address
-     * @param int $port
+     * @param int $port二位无
      * @return void No value is returned.
      */
     public function __construct(string $address,int $port)
