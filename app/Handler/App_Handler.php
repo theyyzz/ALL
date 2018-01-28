@@ -14,32 +14,28 @@ use Illuminate\Support\Facades\Redis;
 class App_Handler
 {
 
-    public $users=array();
+    public $users;
 
     public function on_open($data)
     {
-        var_dump($data);
-        $this->users[$data[0]]='';
-        Redis::set($data[0],'');
-        
+        $this->users=array($data=>'');
+        Redis::set($data,'');
     }
 
     public function on_message($data)
     {
+        $all_data=$data;
+        $data=json_decode($all_data['data']);//中间件来做验证规则，以及路由，感觉在写框架啊
         $SeqNum=$data['SeqNum'];
-        $data=json_decode($data['data']);
-        if (empty($this->users[$SeqNum])){
-            $this->users[$SeqNum]=array('UserInfo:',$data['UserInfo']);
-            Redis::set($SeqNum,json_encode(array('UserInfo:',$data['UserInfo'])));
-        }else{
-            $data['CmdType'];
+        Redis::set([$all_data['fd']],json_encode(array('UserInfo'=>$data['UserInfo'])));
+        $this->users[$all_data['fd']]=array('UserInfo'=>$data['UserInfo']['id']);
 
-        }
     }
 
     public function on_close($data)
     {
         var_dump($data);
+
         
     }
 

@@ -53,8 +53,16 @@
                 $("#top").scrollTop($("#top").prop("scrollHeight"));
                 $('#content').val('');
                 var data={
-                    name:"{{ Auth::user()->name }}",
-                    content:content
+                    SeqNum:100,
+                    data:{
+                        UserInfo:{
+                            id:"{{ Auth::user()->id}}",
+                            name:"{{ Auth::user()->name}}",
+                            email:"{{ Auth::user()->email}}",
+                        },
+                        content:content
+
+                    }
                 }
                 datatype(0, JSON.stringify(data));
             } else {

@@ -10,13 +10,13 @@ namespace App\Handler;
 
 
 class Chat_Realization_Handler
-{
+{//the class name need  change
     public $server;
 
     /**
      * construct
      * @param string $address
-     * @param int $port 测试
+     * @param int $port
      * @return void No value is returned.
      */
     public function __construct(string $address,int $port)
@@ -48,12 +48,12 @@ class Chat_Realization_Handler
 
     public function on(string $type,callable $func)
     {
-        $this->server->run(function ($data)use ($func){
-            if (array_keys($data)[0]=='open'){
+        $this->server->run(function ($data)use ($type,$func){
+            if (array_keys($data)[0]=='open'&& $type== 'open'){
                 $func($data['open']);
-            }elseif (array_keys($data)[0]=='message'){
+            }elseif (array_keys($data)[0]=='message'&&$type== 'message' ){
                 $func($data['message']);
-            }elseif (array_keys($data)[0]=='close'){
+            }elseif (array_keys($data)[0]=='close'&&$type== 'close'){
                 $func($data['close']);
             }
         });
