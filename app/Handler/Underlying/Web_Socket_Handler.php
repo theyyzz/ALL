@@ -6,7 +6,7 @@
  * Time: 15:10
  */
 
-namespace App\Handler;
+namespace App\Handler\Underlying;
 
 class Web_Socket_Handler {
     private $master;

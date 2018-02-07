@@ -6,7 +6,7 @@
  * Time: 17:59
  */
 
-namespace App\Handler;
+namespace App\Handler\App;
 
 
 use Illuminate\Support\Facades\Redis;
@@ -29,7 +29,6 @@ class App_Handler
         $SeqNum=$data['SeqNum'];
         Redis::set([$all_data['fd']],json_encode(array('UserInfo'=>$data['UserInfo'])));
         $this->users[$all_data['fd']]=array('UserInfo'=>$data['UserInfo']['id']);
-
     }
 
     public function on_close($data)

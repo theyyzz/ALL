@@ -6,7 +6,7 @@
  * Time: 16:14
  */
 
-namespace App\Handler;
+namespace App\Handler\Kernel;
 
 
 class Chat_Realization_Handler
