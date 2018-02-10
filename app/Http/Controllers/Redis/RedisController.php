@@ -15,7 +15,5 @@ class RedisController extends Controller
         Redis::set('io',88);
         $opo=Redis::get('io');
         dd($opo);
-
-
     }
 }

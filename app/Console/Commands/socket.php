@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Handler\App_Handler;
-use App\Handler\Chat_Realization_Handler;
+use App\Handler\Kernel\Chat_Realization_Handler;
+use App\Handler\App\App_Handler;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Redis;
@@ -62,7 +62,7 @@ class socket extends Command
     /**
      * Starting  up ALL->socket:websocket
      *
-     * @return string
+     * @return void
      * */
     public function start()
     {
@@ -72,9 +72,7 @@ class socket extends Command
             $this->server=new Chat_Realization_Handler("0.0.0.0",9527);
             Redis::set('status','runing');
             $handler=App::make(App_Handler::class);
-            $this->server->on('open',array($handler,'on_open'));
-            $this->server->on('message',array($handler,'message'));
-            $this->server->on('close',array($handler,'close'));
+            $this->server->on(array($handler,'on'));
         }else{
             $this->error('socket still running');
         }

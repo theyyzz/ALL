@@ -7,7 +7,7 @@
  */
 
 namespace App\Handler\Kernel;
-
+use App\Handler\Underlying\Web_Socket_Handler;
 
 class Chat_Realization_Handler
 {//the class name need  change
@@ -46,16 +46,10 @@ class Chat_Realization_Handler
        $this->server->close($fd);
     }
 
-    public function on(string $type,callable $func)
+    public function on(callable $function)
     {
-        $this->server->run(function ($data)use ($type,$func){
-            if (array_keys($data)[0]=='open'&& $type== 'open'){
-                $func($data['open']);
-            }elseif (array_keys($data)[0]=='message'&&$type== 'message' ){
-                $func($data['message']);
-            }elseif (array_keys($data)[0]=='close'&&$type== 'close'){
-                $func($data['close']);
-            }
+        $this->server->run(function ($data)use ($function){
+            $function($data);
         });
     }
 
